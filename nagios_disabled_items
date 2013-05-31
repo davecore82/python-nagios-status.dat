@@ -1,0 +1,105 @@
+#!/usr/bin/env python
+f = open('/usr/local/nagios/var/status.dat', 'r')
+#f = open('/home/corda1/status.dat', 'r')
+#f = open('/home/corda1/status2.dat', 'r')
+
+# 2 states, start when outside block, block when inside
+state = 'start'
+blocks = []
+block = []
+for line in f:
+  if state == 'start':
+    # If {, start a block and append the line
+    if '{' in line:
+      state = 'block'
+      block.append(line)
+    else:
+      pass
+  else:
+    # If already in block state, just append the line
+    block.append(line)
+    # if }, append the block to blocks and clear block and go in start state
+    if '}' in line:
+      state = 'start'
+      blocks.append(block)
+      block = []
+
+# Create a services and a hosts lists
+services = []
+hosts = []
+
+# populate services and hosts lists 
+for block in blocks:
+  # if servicestatus, append that block to services
+  if block[0].strip().startswith('servicestatus'):
+    services.append(block)
+  # if hoststatus, append that block to hosts
+  elif block[0].strip().startswith('hoststatus'):
+    hosts.append(block)
+
+# Function to create dictionnary with split lines of blocks
+def parsevalues(blocks):
+  parsedblocks = []
+  for block in blocks:
+    values = {}
+    # start at entry 1 (to remove the {, and dont take last entry })
+    for line in block[1:-1]:
+      # split line at =, and only split 1 time (in case of multiple =)
+      parts = line.strip().split("=",1)
+      # populate values dictionary with all key / values of block
+      values[parts[0]] = parts[1]
+    parsedblocks.append(values)
+  return parsedblocks
+
+hosts = parsevalues(hosts)
+services = parsevalues(services)
+
+# Fonction pour afficher une liste avec le meme format
+def printlist(list):
+  print ""
+  for item in list:
+    print item
+  print ""
+
+# AFFICHER LES HOSTS
+hosts_active_checks_disabled = []
+hosts_notifications_disabled = []
+
+for host in hosts:
+  if host['active_checks_enabled'] == "0":
+    hosts_active_checks_disabled.append(host['host_name'])
+  if host['notifications_enabled'] == "0":
+    hosts_notifications_disabled.append(host['host_name'])
+
+print "===================================="
+print "Hosts avec active checks desactives:"
+print "===================================="
+printlist(hosts_active_checks_disabled)
+
+print "====================================="
+print "Hosts avec notifications desactivees:"
+print "====================================="
+printlist(hosts_notifications_disabled)
+
+# AFFICHER LES SERVICES
+
+services_active_checks_disabled = []
+services_notifications_disabled = []
+
+for service in services:
+  #if service['active_checks_enabled'] == "0":
+  if service.get('active_checks_enabled', 'default') == "0":
+    services_active_checks_disabled.append([service['service_description'],service['host_name']])
+  #if service['notifications_enabled'] == "0":
+  if service.get('notifications_enabled', 'default') == "0":
+    services_notifications_disabled.append([service['service_description'],service['host_name']])
+
+print "======================================="
+print "Services avec active checks desactives:"
+print "======================================="
+printlist(services_active_checks_disabled)
+
+print "========================================"
+print "Services avec notifications desactivees:"
+print "========================================"
+printlist(services_notifications_disabled)
