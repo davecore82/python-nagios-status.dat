@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 f = open('/usr/local/nagios/var/status.dat', 'r')
-#f = open('/home/corda1/status.dat', 'r')
-#f = open('/home/corda1/status2.dat', 'r')
 
 # 2 states, start when outside block, block when inside
 state = 'start'
